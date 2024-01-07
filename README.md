@@ -12,16 +12,15 @@ This bot uses a command handler for slash commands. To add a new command, follow
 import type { CommandInteraction } from "discord.js";
 import { SlashCommandBuilder } from "discord.js";
 
-export const config = new SlashCommandBuilder()
-  .setName("mycommand")
-  .setDescription("My command description");
-// You can add more options below.
+const config = new SlashCommandBuilder()
+  .setName("pong")
+  .setDescription("Replies with ping!");
 
-export async function run(interaction: CommandInteraction) {
-  // Your command code here
-  // For example, to reply to the command, use:
-  await interaction.reply("Hello World!");
-}
+const run = async (interaction: CommandInteraction) => {
+  await interaction.reply("Ping!");
+};
+
+export { config, run };
 ```
 
 ## Running the Bot
