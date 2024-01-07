@@ -3,45 +3,46 @@ import type { SlashCommand } from "@/types/commands";
 import { client } from "../index";
 import { Collection, REST, Routes } from "discord.js";
 import { readdirSync } from "node:fs";
+import path from "node:path";
 
 let commands = new Collection<string, SlashCommand>();
+const commandsPath = path.join(__dirname, "../commands");
 
 export default async function initializeCommands() {
-  const commandFiles = readdirSync(`${__dirname}/../commands`).filter((file) =>
+  const commandFiles = readdirSync(commandsPath).filter((file) =>
     file.endsWith(".ts")
   );
 
   for (const file of commandFiles) {
-    const command: SlashCommand = await import(
-      `${__dirname}/../commands/${file}`
-    );
-
-    if ("config" in command && "run" in command) {
-      commands.set(command.config.name, command);
-    } else {
-      console.log(`[WARN] Missing property "conifg" or "run" in ${file}`);
-    }
+    const command: SlashCommand = await import(path.join(commandsPath, file));
+    commands.set(command.config.name, command);
   }
 
   await registerSlashCommands();
-  handleCommandEvent();
+  await handleCommandEvent();
 }
 
 async function registerSlashCommands() {
-  const values = Array.from(commands.values()).map((command) =>
-    command.config.toJSON()
-  );
-
   const rest = new REST().setToken(process.env.BOT_TOKEN!);
-  const route = Routes.applicationCommands(process.env.BOT_ID!);
 
-  await rest
-    .put(route, { body: values })
-    .catch((err) => console.error(err))
-    .then(() => console.log(`(/) Registered slash commands: ${commands.size}`));
+  try {
+    console.log("(/) Refreshing commands...");
+
+    await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.BOT_ID!,
+        process.env.GUILD_ID!
+      ),
+      { body: commands.map(({ config }) => config.toJSON()) }
+    );
+
+    console.log(`(/) Successfully reloaded commands: ${commands.size}`);
+  } catch (err) {
+    console.error(`(!) ${err}`);
+  }
 }
 
-function handleCommandEvent() {
+async function handleCommandEvent() {
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isCommand()) return;
 
